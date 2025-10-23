@@ -1,0 +1,16 @@
+[Unit]
+Description=Astra Assistant (FastAPI)
+After=network.target
+
+[Service]
+Type=simple
+User=%i
+WorkingDirectory=%h/Desktop/AI assistant
+Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=%h/Desktop/AI assistant/.env
+ExecStart=%h/Desktop/AI assistant/ai/bin/uvicorn astra.agent.main:app --host 127.0.0.1 --port 3110
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target
