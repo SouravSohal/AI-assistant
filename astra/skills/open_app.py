@@ -6,8 +6,17 @@ from typing import List
 from ..agent.executor import WHITELIST
 
 
+def _sanitize_app(name: str) -> str:
+    # Normalize case and strip common trailing punctuation that STT often adds
+    name = name.strip().lower()
+    name = name.strip(" .!?,;:'\"()[]{}")
+    # collapse internal extra spaces
+    name = " ".join(name.split())
+    return name
+
+
 def build_open_app_plan(app_name: str) -> List[str]:
-    app = app_name.strip().lower()
+    app = _sanitize_app(app_name)
     # normalize
     mapping = {
         "terminal": "gnome-terminal",
@@ -30,6 +39,16 @@ def build_open_app_plan(app_name: str) -> List[str]:
     }
     if shutil.which("gtk-launch") and app in desktop_ids:
         return [f"gtk-launch {desktop_ids[app]}"]
+
+    # Flatpak fallback if binary not present (common on Fedora Silverblue/Workstation)
+    flatpak_ids = {
+        "firefox": "org.mozilla.firefox",
+        "gnome-terminal": "org.gnome.Terminal",
+        "nautilus": "org.gnome.Nautilus",
+        "code": "com.visualstudio.code",  # sometimes 'com.visualstudio.code'
+    }
+    if shutil.which("flatpak") and app in flatpak_ids:
+        return [f"flatpak run {flatpak_ids[app]}"]
 
     # Last resort: attempt direct name anyway
     return [app]

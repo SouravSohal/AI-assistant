@@ -11,7 +11,8 @@ def build_manage_service_plan(action: str, service: str) -> List[str]:
     s = service.strip()
     if a not in WHITELIST["service_actions"]:
         raise ValueError("Service action not allowed")
-    if s not in WHITELIST["services"]:
+    # Case-insensitive allow-list check for service name
+    if s.lower() not in WHITELIST["services"]:
         raise ValueError("Service not allowed")
     # Read-only actions only by default
     if a != "status":

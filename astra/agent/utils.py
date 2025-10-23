@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import re
+import json
+from typing import Any, Optional
 
 
 def estimate_token_count(text: str) -> int:
@@ -33,3 +35,28 @@ def requires_confirmation(cmd: str) -> bool:
         r"\bchown\b\s+/.+",
     ]
     return any(re.search(p, cmd) for p in risky)
+
+
+def extract_json_object(text: str) -> Optional[dict[str, Any]]:
+    """Best-effort extraction of a JSON object from model output.
+
+    Tries direct parse, fenced code blocks, or first-to-last curly braces.
+    Returns None if no valid JSON object found.
+    """
+    # Try fenced blocks ```json ... ```
+    fence = re.search(r"```(?:json)?\s*(\{[\s\S]*?\})\s*```", text, re.I)
+    if fence:
+        try:
+            return json.loads(fence.group(1))
+        except Exception:
+            pass
+    # Try from first { to last }
+    try:
+        start = text.find("{")
+        end = text.rfind("}")
+        if start != -1 and end != -1 and end > start:
+            chunk = text[start : end + 1]
+            return json.loads(chunk)
+    except Exception:
+        return None
+    return None

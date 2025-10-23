@@ -2,19 +2,20 @@ from __future__ import annotations
 
 from typing import Any, List
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel, Field
 
 from .config import config
 from .audit import audit
 from .model_router import route_request
 from .privacy import scrub_text
-from .intent_parser import parse_intent
+from .intent_parser import parse_intent, llm_parse_intent
 from .executor import execute_safe, ExecResult
 from ..skills.open_app import build_open_app_plan
 from ..skills.run_command import build_run_command_plan
 from ..skills.manage_service import build_manage_service_plan
 from ..tts.tts_engine import tts
+from ..stt.whisper_service import stt_health, transcribe_bytes
 
 
 app = FastAPI(title=config.app_name)
@@ -43,6 +44,9 @@ class ExecResultOut(BaseModel):
 
 def plan_from_intent(text: str) -> List[str]:
     intent = parse_intent(text)
+    if not intent:
+        # Fallback to LLM-based intent extraction
+        intent = llm_parse_intent(text)
     if not intent:
         raise HTTPException(status_code=400, detail="Could not parse intent")
     if intent.name == "open_app":
@@ -149,3 +153,27 @@ def llm_complete(payload: LLMIn):
         "error": error,
     })
     return LLMOut(model=routed.name, reason=routed.reason, text=text, confidence=confidence, error=error)
+
+
+@app.get("/v1/stt/health")
+def stt_health_check():
+    return stt_health()
+
+
+class STTOut(BaseModel):
+    text: str
+    language: str | None = None
+    duration: float | None = None
+    segments: list[dict] | None = None
+
+
+@app.post("/v1/stt/transcribe", response_model=STTOut)
+async def stt_transcribe(file: UploadFile = File(...), language: str | None = Form(None)):
+    data = await file.read()
+    result = transcribe_bytes(data, language=language)
+    return STTOut(
+        text=result.get("text", ""),
+        language=result.get("language"),
+        duration=result.get("duration"),
+        segments=result.get("segments"),
+    )

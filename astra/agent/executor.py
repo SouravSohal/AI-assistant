@@ -30,6 +30,7 @@ WHITELIST = {
         "du",
         "free",
         "date",
+        "flatpak",
     },
 }
 

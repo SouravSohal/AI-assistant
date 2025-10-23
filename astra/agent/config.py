@@ -50,6 +50,15 @@ class Config:
 
     openai_api_key: str | None = os.getenv("OPENAI_API_KEY")
 
+    # STT (Whisper/faster-whisper)
+    whisper_model: str = os.getenv("WHISPER_MODEL", "base")
+    whisper_device: str = os.getenv("WHISPER_DEVICE", "auto")  # auto|cpu|cuda
+    whisper_compute_type: str = os.getenv("WHISPER_COMPUTE_TYPE", "int8")
+    whisper_vad: bool = os.getenv("WHISPER_VAD", "true").lower() == "true"
+    whisper_language: str | None = os.getenv("WHISPER_LANGUAGE") or None  # e.g., "en" or "hi"
+    whisper_beam_size: int = int(os.getenv("WHISPER_BEAM_SIZE", "5"))
+    whisper_initial_prompt: str | None = os.getenv("WHISPER_INITIAL_PROMPT") or None
+
 
 config = Config()
 config.audit_dir.mkdir(parents=True, exist_ok=True)

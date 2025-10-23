@@ -12,7 +12,8 @@ def build_run_command_plan(cmd: str) -> List[str]:
         raise ValueError("Empty command")
 
     binary = parts[0]
-    if binary not in WHITELIST["commands"]:
+    # Case-insensitive allow-list check for convenience
+    if binary.lower() not in WHITELIST["commands"]:
         raise ValueError(f"Command '{binary}' not allowed (whitelist).")
 
     # Limit args length and block globbing injection

@@ -90,6 +90,84 @@ ollama serve
 
 Set `OLLAMA_URL` and `OLLAMA_MODEL` in `.env` if not default.
 
+## Offline STT (faster-whisper)
+
+Requirements:
+- System ffmpeg installed (for decoding many audio formats).
+
+Config in `.env`:
+
+```env
+WHISPER_MODEL=base           # tiny|base|small|medium|large-v3, etc.
+WHISPER_DEVICE=auto          # auto|cpu|cuda
+WHISPER_COMPUTE_TYPE=int8    # int8|int8_float32|float16|float32
+WHISPER_VAD=true             # apply VAD filter
+WHISPER_LANGUAGE=            # optional hint like en, hi, en-IN
+WHISPER_BEAM_SIZE=5          # increase for accuracy (slower)
+WHISPER_INITIAL_PROMPT=      # optional domain prompt, e.g., Linux app names
+```
+
+Health check:
+
+```bash
+curl -s http://127.0.0.1:3110/v1/stt/health | jq .
+```
+
+Transcribe an audio file (wav/mp3/ogg):
+
+```bash
+curl -s -X POST http://127.0.0.1:3110/v1/stt/transcribe \
+  -H "Content-Type: multipart/form-data" \
+  -F "file=@/path/to/audio.wav" | jq .
+```
+
+Specify language per request (helps with accents and non-English):
+
+```bash
+curl -s -X POST http://127.0.0.1:3110/v1/stt/transcribe \
+  -H "Content-Type: multipart/form-data" \
+  -F "file=@/path/to/audio.wav" \
+  -F "language=en" | jq .
+```
+
+### Troubleshooting (GPU / cuDNN)
+
+If you see errors like:
+
+> Unable to load libcudnn_ops.so ... Cannot load symbol cudnnCreateTensorDescriptor
+
+Either:
+- Force CPU mode in `.env`:
+  - `WHISPER_DEVICE=cpu`
+  - `WHISPER_COMPUTE_TYPE=int8`
+  - restart the server
+
+or install the correct NVIDIA CUDA + cuDNN runtime matching your environment, and set:
+- `WHISPER_DEVICE=cuda`
+- `WHISPER_COMPUTE_TYPE=float16`
+
+Note: Astra now auto-falls back to CPU if CUDA init fails.
+
+## Push-to-talk (mic)
+
+Run the simple CLI that records until you press Enter, transcribes, plans, and optionally executes:
+
+```bash
+"/home/kenx1kaneki/Desktop/AI assistant/ai/bin/python" -m astra.stt.ptt_cli
+```
+
+Requirements:
+- Working microphone and default input device configured (PulseAudio/PipeWire).
+- Python packages installed in your venv (already added): sounddevice, numpy.
+
+Flow:
+1) Press Enter to start recording.
+2) Press Enter again to stop.
+3) It transcribes the audio and shows a dry-run plan.
+4) Type "y" to execute with confirmation safeguards.
+
+Tip: set `ASTRA_STT_LANGUAGE=en` in your environment to send a per-request language hint from the CLI (e.g., `en`, `hi`, `en-IN`).
+
 #### Override system prompt and options per request
 
 ```bash
